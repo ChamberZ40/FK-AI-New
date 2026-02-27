@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from calendar import timegm
 
 import feedparser
@@ -32,7 +32,7 @@ class RSSCollector(BaseCollector):
             published_at = None
             published_parsed = entry.get("published_parsed")
             if published_parsed:
-                published_at = datetime.utcfromtimestamp(timegm(published_parsed))
+                published_at = datetime.fromtimestamp(timegm(published_parsed), tz=timezone.utc)
 
             items.append(NewsItem(
                 title=entry.title,

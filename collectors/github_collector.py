@@ -20,7 +20,8 @@ class GitHubCollector(BaseCollector):
     def collect(self) -> list[NewsItem]:
         items = []
         yesterday = (datetime.now(tz=timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
-        query = " OR ".join(f"topic:{t}" for t in self.topics) + f" pushed:>={yesterday} stars:>100"
+        topic_q = " ".join(f"topic:{t}" for t in self.topics)
+        query = f"{topic_q} stars:>100 pushed:>={yesterday}"
         try:
             with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
                 resp = client.get(
