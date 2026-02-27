@@ -4,7 +4,8 @@ import os
 import sys
 
 from config import (
-    DB_PATH, LARK_WEBHOOK_URL,
+    DB_PATH,
+    LARK_APP_ID, LARK_APP_SECRET, LARK_RECEIVE_ID, LARK_RECEIVE_ID_TYPE,
     RSS_FEEDS, HN_KEYWORDS, HN_TOP_N,
     GITHUB_TOPICS, GITHUB_TOP_N,
 )
@@ -51,7 +52,12 @@ def push_news(storage: NewsStorage) -> bool:
         logger.info("没有待推送的新闻")
         return True
 
-    pusher = LarkPusher(webhook_url=LARK_WEBHOOK_URL)
+    pusher = LarkPusher(
+        app_id=LARK_APP_ID,
+        app_secret=LARK_APP_SECRET,
+        receive_id=LARK_RECEIVE_ID,
+        receive_id_type=LARK_RECEIVE_ID_TYPE,
+    )
     success = pusher.send(items)
     if success:
         storage.mark_pushed([item.url for item in items])

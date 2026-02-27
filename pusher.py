@@ -1,15 +1,17 @@
+import json
 import logging
 from collections import defaultdict
 from datetime import datetime
 
-import httpx
+import lark_oapi as lark
+from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 
-from config import REQUEST_TIMEOUT
+from config import LARK_APP_ID, LARK_APP_SECRET, LARK_RECEIVE_ID, LARK_RECEIVE_ID_TYPE
 from models import NewsItem
 
 logger = logging.getLogger(__name__)
 
-# source -> 分类名
+# source → 分类名
 CATEGORY_MAP = {
     "hackernews": "AI资讯",
     "github": "AI技术",
@@ -22,8 +24,16 @@ NUM_EMOJIS = ["1⃣️", "2⃣️", "3⃣️", "4⃣️", "5⃣️", "6⃣️", 
 
 
 class LarkPusher:
-    def __init__(self, webhook_url: str):
-        self.webhook_url = webhook_url
+    def __init__(self, app_id: str, app_secret: str, receive_id: str, receive_id_type: str = "email"):
+        self.receive_id = receive_id
+        self.receive_id_type = receive_id_type
+        self.client = lark.Client.builder() \
+            .app_id(app_id) \
+            .app_secret(app_secret) \
+            .enable_set_token(True) \
+            .domain(lark.FEISHU_DOMAIN) \
+            .log_level(lark.LogLevel.WARNING) \
+            .build()
 
     def format_daily_report(self, items: list[NewsItem]) -> str:
         today = datetime.now().strftime("%Y%m%d")
@@ -52,20 +62,26 @@ class LarkPusher:
         return "\n".join(lines).rstrip()
 
     def send(self, items: list[NewsItem]) -> bool:
-        if not self.webhook_url:
-            logger.error("飞书 Webhook URL 未配置")
+        if not self.receive_id:
+            logger.error("飞书接收者未配置（LARK_RECEIVE_ID）")
             return False
 
         text = self.format_daily_report(items)
-        try:
-            resp = httpx.post(
-                self.webhook_url,
-                json={"msg_type": "text", "content": {"text": text}},
-                timeout=REQUEST_TIMEOUT,
-            )
-            resp.raise_for_status()
+        content = json.dumps({"text": text})
+
+        request = CreateMessageRequest.builder() \
+            .receive_id_type(self.receive_id_type) \
+            .request_body(CreateMessageRequestBody.builder()
+                .receive_id(self.receive_id)
+                .msg_type("text")
+                .content(content)
+                .build()) \
+            .build()
+
+        response = self.client.im.v1.message.create(request)
+        if response.success():
             logger.info(f"飞书推送成功，共 {len(items)} 条新闻")
             return True
-        except Exception as e:
-            logger.error(f"飞书推送失败: {e}")
+        else:
+            logger.error(f"飞书推送失败: code={response.code}, msg={response.msg}")
             return False

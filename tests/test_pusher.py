@@ -3,6 +3,15 @@ from models import NewsItem
 from pusher import LarkPusher
 
 
+def _make_pusher():
+    return LarkPusher(
+        app_id="fake_id",
+        app_secret="fake_secret",
+        receive_id="test@example.com",
+        receive_id_type="email",
+    )
+
+
 def _make_items():
     return [
         NewsItem(title="AI大模型新突破", url="https://example.com/1", source="hackernews"),
@@ -12,7 +21,7 @@ def _make_items():
 
 
 def test_format_daily_report():
-    pusher = LarkPusher(webhook_url="https://fake.webhook")
+    pusher = _make_pusher()
     report = pusher.format_daily_report(_make_items())
     # 检查日报标题
     today = datetime.now().strftime("%Y%m%d")
@@ -26,7 +35,7 @@ def test_format_daily_report():
 
 
 def test_format_empty_report():
-    pusher = LarkPusher(webhook_url="https://fake.webhook")
+    pusher = _make_pusher()
     report = pusher.format_daily_report([])
     today = datetime.now().strftime("%Y%m%d")
     assert f"🌟 {today} AI日报🌟" in report
