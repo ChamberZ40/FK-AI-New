@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from models import NewsItem
 
 
@@ -47,9 +47,14 @@ class NewsStorage:
                     count += 1
         return count
 
-    def get_unpushed(self) -> list[NewsItem]:
+    def get_unpushed(self, hours: int = 24) -> list[NewsItem]:
+        """获取未推送的新闻，默认只取最近 24 小时内发布的"""
+        cutoff = (datetime.now(tz=timezone.utc) - timedelta(hours=hours)).isoformat()
         cursor = self.conn.execute(
-            "SELECT title, url, source, summary, published_at, collected_at, tags FROM news WHERE pushed = 0"
+            """SELECT title, url, source, summary, published_at, collected_at, tags
+               FROM news WHERE pushed = 0 AND published_at >= ?
+               ORDER BY published_at DESC""",
+            (cutoff,),
         )
         items = []
         for row in cursor:

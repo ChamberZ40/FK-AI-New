@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 data/news.db
 .env
+config_local.py
