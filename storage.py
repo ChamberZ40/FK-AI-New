@@ -27,24 +27,24 @@ class NewsStorage:
 
     def save_many(self, items: list[NewsItem]) -> int:
         count = 0
-        for item in items:
-            cursor = self.conn.execute(
-                """INSERT OR IGNORE INTO news
-                   (title, url, source, summary, published_at, collected_at, tags)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    item.title,
-                    item.url,
-                    item.source,
-                    item.summary,
-                    item.published_at.isoformat() if item.published_at else None,
-                    item.collected_at.isoformat(),
-                    json.dumps(item.tags, ensure_ascii=False),
-                ),
-            )
-            if cursor.rowcount > 0:
-                count += 1
-        self.conn.commit()
+        with self.conn:
+            for item in items:
+                cursor = self.conn.execute(
+                    """INSERT OR IGNORE INTO news
+                       (title, url, source, summary, published_at, collected_at, tags)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        item.title,
+                        item.url,
+                        item.source,
+                        item.summary,
+                        item.published_at.isoformat() if item.published_at else None,
+                        item.collected_at.isoformat(),
+                        json.dumps(item.tags, ensure_ascii=False),
+                    ),
+                )
+                if cursor.rowcount > 0:
+                    count += 1
         return count
 
     def get_unpushed(self) -> list[NewsItem]:

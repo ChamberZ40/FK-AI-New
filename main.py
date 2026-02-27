@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import sys
 
 from config import (
     DB_PATH, LARK_WEBHOOK_URL,
@@ -73,7 +74,8 @@ def main():
             logger.info(f"采集完成，共新增 {new_count} 条新闻")
 
         if not args.collect_only:
-            push_news(storage)
+            if not push_news(storage):
+                sys.exit(1)
     finally:
         storage.close()
 

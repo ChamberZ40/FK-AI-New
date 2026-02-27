@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from collectors.base import BaseCollector
-from config import GITHUB_API_BASE, REQUEST_TIMEOUT
+from config import GITHUB_API_BASE, GITHUB_TOKEN, REQUEST_TIMEOUT
 from models import NewsItem
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,14 @@ class GitHubCollector(BaseCollector):
         topic_q = " ".join(f"topic:{t}" for t in self.topics)
         query = f"{topic_q} stars:>100 pushed:>={yesterday}"
         try:
+            headers = {"Accept": "application/vnd.github.v3+json"}
+            if GITHUB_TOKEN:
+                headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
             with httpx.Client(timeout=REQUEST_TIMEOUT) as client:
                 resp = client.get(
                     f"{GITHUB_API_BASE}/search/repositories",
                     params={"q": query, "sort": "stars", "order": "desc", "per_page": self.top_n},
-                    headers={"Accept": "application/vnd.github.v3+json"},
+                    headers=headers,
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -43,6 +46,11 @@ class GitHubCollector(BaseCollector):
                         summary=summary,
                         tags=["开源"],
                     ))
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                logger.error("GitHub API 速率限制，建议设置 GITHUB_TOKEN 环境变量")
+            else:
+                logger.error(f"GitHub 采集失败: {e}")
         except Exception as e:
             logger.error(f"GitHub 采集失败: {e}")
         return items
